@@ -1,0 +1,63 @@
+ARCHIVO DE ENTRADA:
+    El archivo de entrada tendra el siguiente formato y encabezados.
+    ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierdo, Derecho, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+    
+    El ID, TITULO y SKU pasaran tal como entran, el modelo se enviara con un formato 2020-2021 donde a la izquierda estara el año inicio y a la derecha el año fin. Aquí hay que validar que el año fin sea mayor o igual que el año inicio
+    Si los años no cumplen con los formatos o validadción ponerlo en un archivo de salida de errores y brincarlo.
+
+    En la entrada el ID, TITULO, SKU y AÑO son obligatorios, en caso de no tenerlo alguno de esos datos ponerlo en un archivo de salida de errores y brincarlo.
+    El resto de las columnas son opcionales.
+
+BASE DE DATOS:
+    El archivo de base de datos tendra el siguiente formato y encabezados.
+    mi_marca	mi_modelo	anio_ini	anio_fin	mi_version	mi_carroceria	mi_transmision	mi_combustible	ml_marca	ml_modelo	ml_version	ml_carroceria	ml_transmision	ml_combustible
+
+    y los valores de la entrada se ocuparan así:
+    mi_marca = FABRICANTE
+    mi_modelo = MODELO
+    ani_ini = saldra de la izquierda de AÑO
+    ani_fin = saldra de la derecha de AÑO
+    mi_version = SUBMODELO
+    mi_carroceria = CARROCERÍA
+    mi_transmision = TIPO DE TRANSMISIÓN
+    mi_combustible = TIPO DE COMBUSTIBLE
+
+    Ahora si viene lo dificil que son las reglas y necesito tu ayuda.
+
+REGLAS BASE DATOS:
+    1. las principales que hay que revisar son mi_marca, mi_modelo, y la combinación de ambas.
+        Primero se revisa la combinación de ambas.
+            Si hay coincidencias, se revisa el año en la Base de datos.
+                Si esta vacio, quiere decir que la transformación es para cualquiera no importa el año.
+                Si tiene años, la transformación se aplica solo para ese rango de años.
+            Si no hay coincidencias. Buscar solo mi_marca y en modelo diria * (que aplica para todos), 
+                si hay coincidencias:
+                    transformar solo la marca y mantener el modelo.
+                sino hay coincidencias:
+                    Buscar solo mi_modelo y en mi_marca diria * (que aplica para todos).
+                        si hay coincidencias:
+                            transformar solo el modelo y mantener la marca.
+                        sino hay coincidencias:
+                            Es porque no estar en la base de datos, regresarlo con el formato de salida pero una linea por año, ejemplo:
+                                Entrada:
+                                    ID	TITULO	SKU	FABRICANTE	MODELO	AÑO
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2014-2018
+                                Salida:
+                                    ID	TITULO	SKU	FABRICANTE	MODELO	AÑO
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2014
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2015
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2016
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2017
+                                    2406838819	Moldura Costado P- Bmw X5 Xdrive40i Tras Izquierda 2014 2015	011-0313-07	BMW	X5	2018
+
+    2. Respecto a mi_version, mi_carroceria, mi_transmision, mi_combustible si esta vacio en la linea que encontro, se deja vacio, sino esta vacio unicamente se pone lo que es su transformación. (lo que esta en ml_version, ml_carroceria, ml_transmision, ml_combustible)
+    
+    3. La posición se comparara con el archivo de posiciones, si lo encuentra lo transforma, sino, en la salida se queda igual que como esta en la entrada, puedes haber 1 o varias posiciones separadas por coma, por ejemplo:
+        en la entrada puede decir IZQUIERDA, TRASERO y tiene que convertir las dos por separado pero unirlo en la salida Izquierdo, Trasera
+
+    4. Te voy a pasar un ejemplo con 4 hojas, la "Base de datos", "Posiciones", "Entrada", "Formato Salida Esperado" puse ejemplos de como se debe de trabajar todo, se honesto como yo y si algo no lo entiendes preguntame
+        se que a veces puedo no explicar bien, pero el chiste es que nos entendamos para que esto salga sin problemas. Analizalo bien y pregunta tus dudas.
+
+    *Recueda que todas las salidas es una linea por año.
+
+

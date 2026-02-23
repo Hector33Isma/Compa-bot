@@ -1,0 +1,27 @@
+normalizador_v2:
+
+python normalizador_v2.py `
+--input Agregar_cmp22022026.xlsx `
+--db normalizador.xlsx `
+--out-ok salida_ok_Comps_cmp22022026.xlsx `
+--out-err salida_errores_cmp22022026.xlsx
+
+ingesta_compat_db:
+
+python ingesta_compat_db.py `
+--input ilum.xlsx `
+--db compat_db.sqlite `
+--export-xlsx respaldo_compat_db.xlsx
+
+
+generar_agregar_y_clonar:
+
+python generar_agregar_y_clonar.py `
+  --input cmp22022026.xlsx `
+  --db compat_db.sqlite `
+  --pos-normalizer normalizador_posiciones.xlsx `
+  --carroceria-normalizer normalizador_carroceria.xlsx `
+  --traccion-normalizer normalizador_traccion.xlsx `
+  --out-agregar Agregar_cmp22022026.xlsx `
+  --out-clonar Clonar_cmp22022026.xlsx `
+  --out-sin Sin_datos_cmp22022026.xlsx

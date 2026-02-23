@@ -1,0 +1,195 @@
+Vamos a crear un normalizador, que unicamente tomara de entrada datos mios y los comparara en una base de datos para cambiarlos a como los entiende el servidor
+
+ARCHIVO DE ENTRADA:
+    El archivo de entrada tendra el siguiente formato y encabezados.
+    ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierdo, Derecho, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+    
+    El ID, TITULO y SKU pasaran tal como entran, el año se enviara con un formato AAAA
+
+    En la entrada el ID, TITULO, SKU y AÑO son obligatorios, en caso de no tenerlo alguno de esos datos ponerlo en un archivo de salida de errores y brincarlo.
+    El resto de las columnas son opcionales.
+
+BASE DE DATOS (Normalizador):
+    El archivo de base de datos tendra el siguiente formato y encabezados.
+    mi_marca	mi_modelo	anio_ini	anio_fin	ml_marca	ml_modelo
+
+    cada linea del archivo de entrada se comparara con el Normalizador:
+    mi_marca = FABRICANTE
+    mi_modelo = MODELO
+    rango anio_ini anio_fin = AÑO    
+
+    Ahora si viene lo dificil que son las reglas y necesito tu ayuda.
+
+REGLAS BASE DATOS (Normalizador):
+    1. las principales que hay que revisar son mi_marca, mi_modelo, y la combinación de ambas.
+        Primero se revisa la combinación de ambas.
+            Si hay coincidencias, se revisa el año en la Base de datos.
+                Si esta vacio, quiere decir que la transformación es para cualquiera no importa el año.
+                Si tiene años, la transformación se aplica solo para ese rango de años.
+            Si no hay coincidencias. Buscar solo mi_marca y en modelo diria * (que aplica para todos), 
+                si hay coincidencias:
+                    transformar solo la marca y mantener el modelo.
+                sino hay coincidencias:
+                    Buscar solo mi_modelo y en mi_marca diria * (que aplica para todos).
+                        si hay coincidencias:
+                            transformar solo el modelo y mantener la marca.
+                        sino hay coincidencias:
+                            Es porque no esta en la base de datos, regresarlo sin hacer modificaciones.
+
+    *Es importante aclarar que en ocasiones una entrada tendra muchas salidas por ejemplo:
+        en la entrada:
+        ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	Serie 3	2000											
+
+        y la base de datos:
+        mi_marca	mi_modelo	anio_ini	anio_fin	ml_marca	ml_modelo
+        BMW	SERIE 3			Bmw	318i
+        BMW	SERIE 3			Bmw	318is
+        BMW	SERIE 3			Bmw	318ti
+        BMW	SERIE 3			Bmw	320i
+        BMW	SERIE 3			Bmw	320i xDrive
+        BMW	SERIE 3			Bmw	323Ci
+        BMW	SERIE 3			Bmw	323i
+        BMW	SERIE 3			Bmw	323is
+        BMW	SERIE 3			Bmw	323ti
+        BMW	SERIE 3			Bmw	325Ci
+        BMW	SERIE 3			Bmw	325e
+        BMW	SERIE 3			Bmw	325i
+        BMW	SERIE 3			Bmw	325is
+        BMW	SERIE 3			Bmw	325iX
+        BMW	SERIE 3			Bmw	325xi
+        BMW	SERIE 3			Bmw	328Ci
+        BMW	SERIE 3			Bmw	328d
+        BMW	SERIE 3			Bmw	328d xDrive
+        BMW	SERIE 3			Bmw	328i
+        BMW	SERIE 3			Bmw	328i GT xDrive
+        BMW	SERIE 3			Bmw	328i xDrive
+        BMW	SERIE 3			Bmw	328is
+        BMW	SERIE 3			Bmw	328xi
+        BMW	SERIE 3			Bmw	330Ci
+        BMW	SERIE 3			Bmw	330e
+        BMW	SERIE 3			Bmw	330e xDrive
+        BMW	SERIE 3			Bmw	330i
+        BMW	SERIE 3			Bmw	330i GT xDrive
+        BMW	SERIE 3			Bmw	330i xDrive
+        BMW	SERIE 3			Bmw	330xi
+        BMW	SERIE 3			Bmw	335d
+        BMW	SERIE 3			Bmw	335i
+        BMW	SERIE 3			Bmw	335i GT xDrive
+        BMW	SERIE 3			Bmw	335i xDrive
+        BMW	SERIE 3			Bmw	335is
+        BMW	SERIE 3			Bmw	335xi
+        BMW	SERIE 3			Bmw	340i
+        BMW	SERIE 3			Bmw	340i GT xDrive
+        BMW	SERIE 3			Bmw	340i xDrive
+
+        Se espera la salida:
+        ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	318i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	318is	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	318ti	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	320i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	320i xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	323Ci	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	323i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	323is	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	323ti	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325Ci	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325e	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325is	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325iX	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	325xi	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328Ci	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328d	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328d xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328i GT xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328i xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328is	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	328xi	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330Ci	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330e	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330e xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330i GT xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330i xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	330xi	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335d	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335i GT xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335i xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335is	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	335xi	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	340i	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	340i GT xDrive	2000											
+        2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	100130	BMW	340i xDrive	2000											
+
+
+Parece que todo funciona bien, vamos a hacer este proyecto en 3 pasos (3 scripts), despues lo pasamos a mi macro_tools_V3 
+Este normalizador que ya hicimos es el paso 3.
+el paso (script) 1 es sencillo pero crucial para mantener una base de datos limpia y sana, te explico, lo que tiene que hacer es:
+Va a leer un archivo excel con X numero de columnas, pero ahí debe buscar SKU, MARCA, MODELO, AÑO INICIO, AÑO FIN. Estas son obligatorias.
+No hay que repetir compatibilidades, es decir, no debemos agregar cosas que ya existan, me refiero a repetidas completamente, me refiero a dos con el mismo SKU, MARCA, MODELO, AÑO INICIO y AÑO FIN, si varia una no se considera repetida.
+Por ahora esa seran todas pero dejalo preparado para despues incluir LADO, POSICION_1, POSICION_2 Y POSICION_3 Estas son opcionales.
+y los datos de estas columnas se guardaran ya sea un excel o base de datos (Lo dejo a tu criterio, tu eres el senior).
+En resumidas cuentas, este script va a vaciar la información de cada "Desarrollo" en excel que yo vaya haciendo a la base de datos y la llave principal será el SKU
+
+En el paso (Script) 2, le pasare un archivo con el siguiente formato (foto excel 1) que es el mismo que se utiliza en el normalizador
+siempre lo pasare con el ID, TITULO y SKU, el trabajo de este script sera buscar en la base de datos el sku y escribir en un archivo de salida "Agregar_compatibilidades"
+con el mismo formato del de entrada todas las que encuentre de ese SKU escribiendo una linea por año, por ejemplo:
+
+Base de datos:
+SKU MARCA   MODELO  AÑO INICIO  AÑO FIN
+203-2321-00 NISSAN  Tsuru   1992    1995
+203-2321-00 NISSAN  SENTRA  1992    1996
+
+Entrada:
+ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00														
+
+
+Salida esperada:
+ID	TITULO	SKU	FABRICANTE	MODELO	AÑO
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	TSURU	1992
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	TSURU	1993
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	TSURU	1994
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	TSURU	1995
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	SENTRA	1992
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	SENTRA	1993
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	SENTRA	1994
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	SENTRA	1995
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00	NISSAN	SENTRA	1996
+
+En ocasiones en el archivo de entrada se pasaran varias veces el mismo Sku con distintos ID en ese caso solo se hara el primer ID que se encuentre de  un SKU
+y los restantes se podran en otro archivo de salida "Clonar_compatibilidades" donde tendra tres columnas:
+Publicación origen	Publicación destino	Incluir notas y posiciones
+Publicación origen = ID del Sku que se proceso Primero y que ya se paso al archivo de salida "Agregar_compatibilidades"
+Publicación destino = ID del Sku que no se proceso porque se habia hecho antes
+Incluir notas y posiciones = Siempre dira "Sí"
+
+Ejemplo de salida "Clonar_compatibilidades":
+Base de datos:
+SKU MARCA   MODELO  AÑO INICIO  AÑO FIN
+203-2321-00 NISSAN  Tsuru   1992    1995
+203-2321-00 NISSAN  SENTRA  1992    1996
+
+Entrada:
+ID	TITULO	SKU	FABRICANTE	MODELO	AÑO	SUBMODELO	LITROS	CILINDROS	CARROCERÍA	TIPO DE TRANSMISIÓN	TIPO DE TRACCIÓN	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÓN	ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+2480755969	Elevador P Nissan Tsuru Iii Elect C/motor Tras Der 2014 2015	203-2321-00														
+2480768685	Elevador Toyota Corolla Elect C/motor Del Derecho 1992 1993	203-2321-00														
+2480768997	Elevador P Chevrolet Pick Up Elect C/motor Del Izq 1999 2000	203-2321-00														
+2480781059	Elevador Honda Accord Coupe Elect C/motor Del Izq 1998 1999	203-2321-00														
+
+Salida esperada:
+Publicación origen	Publicación destino	Incluir notas y posiciones
+2480755969	2480768685	Sí
+2480755969	2480768997	Sí
+2480755969	2480781059	Sí
+
+Y por ultimo un 3er archivo de salida "Sin_datos" si el sku que buscamos no esta en la base de datos, este no se escribe en la salida
+"Agregar_compatibilidades" sino en "Sin_datos" con el mismo formato de entrada.
+
+Me di a etender bien?
+
+

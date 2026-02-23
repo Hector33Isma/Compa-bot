@@ -1,0 +1,18 @@
+python normalizador.py --input entrada_prueba_2.xlsx --db normalizador.xlsx --out-ok salida_ok_2.csv --out-err salida_errores_2.csv
+
+
+1. La salida debe ser en xlsx no en csv, además, las Ñ y los acentos en los encabezados no se estan escribiendo bien.
+2. Cuando se mezclan sku's enteros con de texto, los de texto no se escriben en la salida en el SKU, cuando entran puros de texto, esos si se imprimen en la salida
+    Ejemplo de salida:
+        ID	TITULO	SKU	FABRICANTE	MODELO	AÃ‘O	SUBMODELO	LITROS	CILINDROS	CARROCERÃA	TIPO DE TRANSMISIÃ“N	TIPO DE TRACCIÃ“N	TIPO DE COMBUSTIBLE	TIPO DE MOTOR	TIPO DE ASPIRACIÃ“N	ASIGNACIÃ“N DE POSICIÃ“N(Conductor, AcompaÃ±ante, Izquierdo, Derecho, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)	NOTAS
+        2480846973	Elevador P- Isuzu Elf Manual Del Derecho 2006 2007 2008	104576	ISUZU	NPR	2006
+        2480846973	Elevador P- Isuzu Elf Manual Del Derecho 2006 2007 2008	104576	ISUZU	NPR	2007
+        2480846973	Elevador P- Isuzu Elf Manual Del Derecho 2006 2007 2008	104576	ISUZU	NPR	2008
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS E-POWER	2023
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS E-POWER	2024
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS	2017
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS	2018
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS	2019
+        2229536073	Tolva Tras P- Nissan Kicks Epower Lamina P/ Calav 2023 2024		NISSAN	KICKS	2020
+
+python normalizador_v2.py --input entrada_prueba_.xlsx --db normalizador.xlsx --out-ok salida_ok_v2.xlsx --out-err salida_errores_v2.xlsx
