@@ -1,0 +1,11 @@
+# Rutas base
+COMPAT_DB_PATH=compat_db.sqlite
+NORMALIZADOR_DB_PATH=normalizador.xlsx
+POS_NORMALIZER_PATH=normalizador_posiciones.xlsx
+CARROCERIA_NORMALIZER_PATH=normalizador_carroceria.xlsx
+TRACCION_NORMALIZER_PATH=normalizador_traccion.xlsx
+
+# Salidas
+OUTPUT_BASE_DIR=.
+CHUNK_AGREGAR=50000
+CHUNK_CLONAR=7000

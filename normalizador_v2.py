@@ -4,7 +4,7 @@ normalizador_v2.py
 Héctor • Normalizador de marcas/modelos/año con soporte de CARROCERÍA/TRACCIÓN.
 
 Entrada (XLSX) columnas requeridas:
-  ID, TITULO, SKU, FABRICANTE, MODELO, AÑO
+  UserProductID, TITULO, SKU, FABRICANTE, MODELO, AÑO
 Col opcionales:
   SUBMODELO, LITROS, CILINDROS, CARROCERÍA, TIPO DE TRANSMISIÓN,
   TIPO DE TRACCIÓN, TIPO DE COMBUSTIBLE, TIPO DE MOTOR, TIPO DE ASPIRACIÓN,
@@ -29,7 +29,7 @@ Reglas:
 
 Salida:
   - out_ok (XLSX): filas normalizadas.
-  - out_err (XLSX): filas descartadas por faltar ID/TITULO/SKU/AÑO.
+  - out_err (XLSX): filas descartadas por faltar UserProductID/TITULO/SKU/AÑO.
 """
 
 import argparse
@@ -46,7 +46,7 @@ COL_ASIG = "ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha
 
 # === Columnas esperadas en ENTRADA (orden de salida) ===
 REQ_COLS_IN = [
-    "ID","TITULO","SKU","FABRICANTE","MODELO","AÑO",
+    "UserProductID","TITULO","SKU","FABRICANTE","MODELO","AÑO",
     "SUBMODELO","LITROS","CILINDROS","CARROCERÍA","TIPO DE TRANSMISIÓN",
     "TIPO DE TRACCIÓN","TIPO DE COMBUSTIBLE","TIPO DE MOTOR","TIPO DE ASPIRACIÓN",
     COL_ASIG,
@@ -339,6 +339,41 @@ class Normalizador:
             )
         )
 
+def normalizar_rows(df_in: pl.DataFrame, df_db: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
+    req_min = ["UserProductID", "TITULO", "SKU", "AÑO"]
+    missing_rows = []
+    ok_source_rows = []
+
+    for row in df_in.to_dicts():
+        if any(is_blank_like(row.get(c)) for c in req_min):
+            missing_rows.append(row)
+        else:
+            ok_source_rows.append(row)
+
+    norm = Normalizador(df_db)
+    out_ok_rows: list[dict] = []
+    for r in ok_source_rows:
+        out_ok_rows.extend(norm.transformar(r))
+
+    if out_ok_rows:
+        df_ok = pl.DataFrame(out_ok_rows)
+        for c in REQ_COLS_IN:
+            if c not in df_ok.columns:
+                df_ok = df_ok.with_columns(pl.lit("").alias(c).cast(pl.Utf8))
+        df_ok = df_ok.select(REQ_COLS_IN)
+    else:
+        df_ok = pl.DataFrame(schema={c: pl.Utf8 for c in REQ_COLS_IN})
+
+    if missing_rows:
+        df_err = pl.DataFrame(missing_rows)
+        for c in REQ_COLS_IN:
+            if c not in df_err.columns:
+                df_err = df_err.with_columns(pl.lit("").alias(c).cast(pl.Utf8))
+        df_err = df_err.select(REQ_COLS_IN)
+    else:
+        df_err = pl.DataFrame(schema={c: pl.Utf8 for c in REQ_COLS_IN})
+
+    return df_ok, df_err
 
 
 # ---------- CLI ----------
@@ -358,48 +393,16 @@ def main():
     df_in = read_table(path_in, REQ_COLS_IN, csv_encoding=args.csv_encoding)
     df_db = read_table(path_db, REQ_COLS_DB, csv_encoding=args.csv_encoding)
 
-    # Validación mínima: columnas obligatorias de entrada
-    req_min = ["ID", "TITULO", "SKU", "AÑO"]
-    missing_rows = []
-    ok_source_rows = []
-
-    for row in df_in.to_dicts():
-        if any(is_blank_like(row.get(c)) for c in req_min):
-            missing_rows.append(row)
-        else:
-            ok_source_rows.append(row)
-
-    norm = Normalizador(df_db)
-
-    out_ok_rows: list[dict] = []
-    for r in ok_source_rows:
-        out_ok_rows.extend(norm.transformar(r))
-
-    # Forzar orden/selección EXACTA a columnas de la entrada
-    if out_ok_rows:
-        df_ok = pl.DataFrame(out_ok_rows)
-        # Asegurar que existan todas las columnas en el orden original
-        for c in REQ_COLS_IN:
-            if c not in df_ok.columns:
-                df_ok = df_ok.with_columns(pl.lit("").alias(c).cast(pl.Utf8))
-        df_ok = df_ok.select(REQ_COLS_IN)
-    else:
-        df_ok = pl.DataFrame(schema={c: pl.Utf8 for c in REQ_COLS_IN})
-
-    if missing_rows:
-        df_err = pl.DataFrame(missing_rows)
-        for c in REQ_COLS_IN:
-            if c not in df_err.columns:
-                df_err = df_err.with_columns(pl.lit("").alias(c).cast(pl.Utf8))
-        df_err = df_err.select(REQ_COLS_IN)
-    else:
-        df_err = pl.DataFrame(schema={c: pl.Utf8 for c in REQ_COLS_IN})
+    df_ok, df_err = normalizar_rows(df_in, df_db)
 
     write_xlsx(Path(args.out_ok), df_ok)
-    write_xlsx(Path(args.out_err), df_err)
+    if df_err.height > 0:
+        write_xlsx(Path(args.out_err), df_err)
 
     print(f"[OK] Filas OK: {df_ok.height} | Errores: {df_err.height}")
-    print(f" -> {args.out_ok}\n -> {args.out_err}")
+    print(f" -> {args.out_ok}")
+    if df_err.height > 0:
+        print(f" -> {args.out_err}")
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ import pandas as pd
 DB_PATH_DEFAULT = "compat_db.sqlite"
 
 IN_HEADERS = [
-    "ID","TITULO","SKU","FABRICANTE","MODELO","AÑO",
+    "UserProductID","TITULO","SKU","FABRICANTE","MODELO","AÑO",
     "SUBMODELO","LITROS","CILINDROS","CARROCERÍA","TIPO DE TRANSMISIÓN",
     "TIPO DE TRACCIÓN","TIPO DE COMBUSTIBLE","TIPO DE MOTOR",
     "TIPO DE ASPIRACIÓN",
@@ -15,18 +15,27 @@ IN_HEADERS = [
     "NOTAS"
 ]
 ASIG_COL = "ASIGNACIÓN DE POSICIÓN(Conductor, Acompañante, Izquierda, Derecha, Delantera, Trasera, Interno, Externo, Superior, Inferior, Intermedio, Centro)"
+CLONAR_HEADERS = ["Publicación origen", "UserProduct origen", "UserProduct destino", "Incluir notas"]
 
 def _is_blank(x) -> bool:
     if x is None: return True
     s = str(x).strip()
     return s == "" or s.lower() in {"nan","<na>","na","none","null","-"}
 
+def _to_text(x) -> str:
+    return "" if _is_blank(x) else str(x).strip()
+
 def read_input(path: Path) -> pd.DataFrame:
     df = pd.read_excel(path, dtype=str, engine="openpyxl")
     df.columns = [str(c).strip() for c in df.columns]
+    req_min = ["UserProductID", "TITULO", "SKU", "AÑO"]
+    missing = [c for c in req_min if c not in df.columns]
+    if missing:
+        raise SystemExit(f"El archivo de entrada debe incluir columnas mínimas: {', '.join(req_min)}. Faltan: {', '.join(missing)}")
     for c in IN_HEADERS:
         if c not in df.columns: df[c] = ""
-    for c in ["ID","TITULO","SKU","FABRICANTE","MODELO","AÑO"]:
+    df[IN_HEADERS] = df[IN_HEADERS].fillna("")
+    for c in ["UserProductID","TITULO","SKU","FABRICANTE","MODELO","AÑO"]:
         df[c] = df[c].astype(str).str.strip()
     return df
 
@@ -144,6 +153,85 @@ def expand_years(row) -> list[int]:
     if af < ai: af = ai
     return list(range(ai, af+1))
 
+def generar_agregar_clonar_sin(
+    input_path: Path,
+    db_path: Path,
+    pos_normalizer_path: Path,
+    carroceria_normalizer_path: Path,
+    traccion_normalizer_path: Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, int]:
+    conn = sqlite3.connect(db_path)
+    try:
+        df_in = read_input(input_path)
+        mapa_pos = read_pos_normalizer(pos_normalizer_path)
+        mapa_car = read_multi_normalizer(carroceria_normalizer_path)
+        mapa_trac = read_multi_normalizer(traccion_normalizer_path)
+
+        first_id_by_sku: dict[str, str] = {}
+        agregar_rows, clonar_rows, sin_datos_rows = [], [], []
+
+        for _, r in df_in.iterrows():
+            sku = _to_text(r.get("SKU"))
+            if not sku:
+                continue
+
+            origen_id = first_id_by_sku.get(sku)
+            compat = query_compat(conn, sku)
+
+            if compat.empty:
+                sin_datos_rows.append({h: _to_text(r.get(h)) for h in IN_HEADERS})
+                continue
+
+            current_user_product_id = _to_text(r.get("UserProductID"))
+            if origen_id is None:
+                first_id_by_sku[sku] = current_user_product_id
+
+                for _, c in compat.iterrows():
+                    years = expand_years(c)
+                    asignacion = build_asignacion(
+                        c.get("lado"),
+                        c.get("posicion_1"),
+                        c.get("posicion_2"),
+                        c.get("posicion_3"),
+                        mapa_pos,
+                    )
+
+                    cars = normalize_multi_from_db(c.get("carroceria"), mapa_car) or [""]
+                    tracs = normalize_multi_from_db(c.get("traccion"), mapa_trac) or [""]
+
+                    for y in years:
+                        for car in cars:
+                            for tr in tracs:
+                                out = {h: "" for h in IN_HEADERS}
+                                out["UserProductID"] = current_user_product_id
+                                out["TITULO"] = _to_text(r.get("TITULO"))
+                                out["SKU"] = sku
+                                out["FABRICANTE"] = _to_text(c.get("FABRICANTE")).upper()
+                                out["MODELO"] = _to_text(c.get("MODELO")).upper()
+                                out["AÑO"] = f"{int(y):04d}"
+                                out["CARROCERÍA"] = _to_text(car)
+                                out["TIPO DE TRACCIÓN"] = _to_text(tr)
+                                out[ASIG_COL] = _to_text(asignacion)
+                                agregar_rows.append(out)
+            else:
+                clonar_rows.append({
+                    "Publicación origen": "",
+                    "UserProduct origen": origen_id,
+                    "UserProduct destino": current_user_product_id,
+                    "Incluir notas": "Sí",
+                })
+
+        df_agregar = pd.DataFrame(agregar_rows, columns=IN_HEADERS).fillna("")
+        df_clonar = pd.DataFrame(clonar_rows, columns=CLONAR_HEADERS).fillna("")
+        df_sin = pd.DataFrame(sin_datos_rows, columns=IN_HEADERS).fillna("")
+        return df_agregar, df_clonar, df_sin, len(df_in)
+    finally:
+        conn.close()
+
+def write_xlsx(path: Path, df: pd.DataFrame):
+    with pd.ExcelWriter(path, engine="openpyxl") as w:
+        df.fillna("").to_excel(w, index=False)
+
 def main():
     ap = argparse.ArgumentParser(
         description="Genera Agregar/Clonar/Sin_datos incluyendo ASIGNACIÓN DE POSICIÓN y normalización de CARROCERÍA/TRACCIÓN (1→N)."
@@ -158,71 +246,24 @@ def main():
     ap.add_argument("--out-sin", default="Sin_datos.xlsx")
     args = ap.parse_args()
 
-    conn = sqlite3.connect(args.db)
-    df_in = read_input(Path(args.input))
-    mapa_pos  = read_pos_normalizer(Path(args.pos_normalizer))
-    mapa_car  = read_multi_normalizer(Path(args.carroceria_normalizer))
-    mapa_trac = read_multi_normalizer(Path(args.traccion_normalizer))
+    df_agregar, df_clonar, df_sin, _ = generar_agregar_clonar_sin(
+        input_path=Path(args.input),
+        db_path=Path(args.db),
+        pos_normalizer_path=Path(args.pos_normalizer),
+        carroceria_normalizer_path=Path(args.carroceria_normalizer),
+        traccion_normalizer_path=Path(args.traccion_normalizer),
+    )
 
-    first_id_by_sku: dict[str,str] = {}
-    agregar_rows, clonar_rows, sin_datos_rows = [], [], []
+    write_xlsx(Path(args.out_agregar), df_agregar)
+    write_xlsx(Path(args.out_clonar), df_clonar)
 
-    for _, r in df_in.iterrows():
-        sku = r["SKU"]; 
-        if not sku: continue
+    if not df_sin.empty:
+        write_xlsx(Path(args.out_sin), df_sin)
 
-        origen_id = first_id_by_sku.get(sku)
-        compat = query_compat(conn, sku)
-
-        if compat.empty:
-            sin_datos_rows.append(r.to_dict())
-            continue
-
-        if origen_id is None:
-            first_id_by_sku[sku] = r["ID"]
-            origen_id = r["ID"]
-
-            for _, c in compat.iterrows():
-                years = expand_years(c)
-                asignacion = build_asignacion(c.get("lado"), c.get("posicion_1"), c.get("posicion_2"), c.get("posicion_3"), mapa_pos)
-
-                # Normalización 1→N: CARROCERÍA y TRACCIÓN
-                cars = normalize_multi_from_db(c.get("carroceria"), mapa_car) or [""]
-                tracs = normalize_multi_from_db(c.get("traccion"), mapa_trac) or [""]
-
-                # Producto cartesiano (años × carrocerías × tracciones)
-                for y in years:
-                    for car in cars:
-                        for tr in tracs:
-                            out = {h: "" for h in IN_HEADERS}
-                            out["ID"] = r["ID"]
-                            out["TITULO"] = r["TITULO"]
-                            out["SKU"] = sku
-                            out["FABRICANTE"] = str(c["FABRICANTE"]).upper().strip()
-                            out["MODELO"] = str(c["MODELO"]).upper().strip()
-                            out["AÑO"] = f"{int(y):04d}"
-                            out["CARROCERÍA"] = car
-                            out["TIPO DE TRACCIÓN"] = tr
-                            out[ASIG_COL] = asignacion
-                            agregar_rows.append(out)
-        else:
-            clonar_rows.append({
-                "Publicación origen": origen_id,
-                "Publicación destino": r["ID"],
-                "Incluir notas y posiciones": "Sí"
-            })
-
-    conn.close()
-
-    with pd.ExcelWriter(args.out_agregar, engine="openpyxl") as w:
-        pd.DataFrame(agregar_rows, columns=IN_HEADERS).to_excel(w, index=False)
-    with pd.ExcelWriter(args.out_clonar, engine="openpyxl") as w:
-        pd.DataFrame(clonar_rows, columns=["Publicación origen","Publicación destino","Incluir notas y posiciones"]).to_excel(w, index=False)
-    with pd.ExcelWriter(args.out_sin, engine="openpyxl") as w:
-        pd.DataFrame(sin_datos_rows, columns=IN_HEADERS).to_excel(w, index=False)
-
-    print(f"[OK] Agregar: {len(agregar_rows)} | Clonar: {len(clonar_rows)} | Sin_datos: {len(sin_datos_rows)}")
-    print(f" -> {args.out_agregar}\n -> {args.out_clonar}\n -> {args.out_sin}")
+    print(f"[OK] Agregar: {len(df_agregar)} | Clonar: {len(df_clonar)} | Sin_datos: {len(df_sin)}")
+    print(f" -> {args.out_agregar}\n -> {args.out_clonar}")
+    if not df_sin.empty:
+        print(f" -> {args.out_sin}")
 
 if __name__ == "__main__":
     main()

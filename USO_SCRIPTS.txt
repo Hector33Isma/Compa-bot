@@ -1,3 +1,17 @@
+PIPELINE (RECOMENDADO):
+
+python pipeline.py `
+  --input cmp_25.xlsx `
+  --db compat_db.sqlite `
+  --normalizador-db normalizador.xlsx `
+  --pos-normalizer normalizador_posiciones.xlsx `
+  --carroceria-normalizer normalizador_carroceria.xlsx `
+  --traccion-normalizer normalizador_traccion.xlsx `
+  --output-dir . `
+  --chunk-agregar 50000 `
+  --chunk-clonar 7000
+
+
 normalizador_v2:
 
 python normalizador_v2.py `
